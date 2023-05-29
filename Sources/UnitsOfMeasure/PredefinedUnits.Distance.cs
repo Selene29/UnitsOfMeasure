@@ -1,4 +1,6 @@
-﻿namespace UnitsOfMeasure;
+﻿using System.Numerics;
+
+namespace UnitsOfMeasure;
 
 public struct Meter<TNumber> : IBaseUnit<Meter<TNumber>, TNumber>
     where TNumber : IMultiplicativeIdentity<TNumber, TNumber>
@@ -9,39 +11,39 @@ public struct Meter<TNumber> : IBaseUnit<Meter<TNumber>, TNumber>
 }
 
 public struct Millimeter<TNumber> : IBaseUnit<Meter<TNumber>, TNumber>
-    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParseable<TNumber>
+    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
 {
     public string Postfix => "mm";
 
-    public TNumber Base => Constants<TNumber>.Number0_001;
+    public TNumber Base => Constants<TNumber>.Number10Em3;
 }
 
 public struct Centimeter<TNumber> : IBaseUnit<Meter<TNumber>, TNumber>
-    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParseable<TNumber>
+    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
 {
     public string Postfix => "cm";
 
-    public TNumber Base => Constants<TNumber>.Number0_01;
+    public TNumber Base => Constants<TNumber>.Number10Em2;
 }
 
 public struct Decimeter<TNumber> : IBaseUnit<Meter<TNumber>, TNumber>
-    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParseable<TNumber>
+    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
 {
     public string Postfix => "dm";
 
-    public TNumber Base => Constants<TNumber>.Number0_1;
+    public TNumber Base => Constants<TNumber>.Number10Em1;
 }
 
 public struct Kilometer<TNumber> : IBaseUnit<Meter<TNumber>, TNumber>
-    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParseable<TNumber>
+    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
 {
     public string Postfix => "km";
 
-    public TNumber Base => Constants<TNumber>.Number1000;
+    public TNumber Base => Constants<TNumber>.Number10E3;
 }
 
 public struct Mile<TNumber> : IBaseUnit<Meter<TNumber>, TNumber>
-    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParseable<TNumber>
+    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
 {
     public string Postfix => "mile";
 

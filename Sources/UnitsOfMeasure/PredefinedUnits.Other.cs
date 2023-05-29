@@ -1,4 +1,6 @@
-﻿namespace UnitsOfMeasure;
+﻿using System.Numerics;
+
+namespace UnitsOfMeasure;
 
 public struct Radian<TNumber> : IBaseUnit<Radian<TNumber>, TNumber>
     where TNumber : IMultiplicativeIdentity<TNumber, TNumber>
@@ -9,7 +11,7 @@ public struct Radian<TNumber> : IBaseUnit<Radian<TNumber>, TNumber>
 }
 
 public struct Degree<TNumber> : IBaseUnit<Radian<TNumber>, TNumber>
-    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParseable<TNumber>
+    where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
 {
     public string Postfix => "deg";
 
