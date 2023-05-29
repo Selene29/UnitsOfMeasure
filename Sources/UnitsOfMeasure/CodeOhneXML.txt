@@ -1,0 +1,209 @@
+﻿internal static class Constants<TNumber>
+where TNumber : IParsable<TNumber>
+{
+internal static readonly TNumber Number1000;
+internal static readonly TNumber Number0_1;
+internal static readonly TNumber Number0_01;
+internal static readonly TNumber Number0_001;
+internal static readonly TNumber Number0_000001;
+internal static readonly TNumber Number1609_34;
+internal static readonly TNumber Number60;
+internal static readonly TNumber Number3600;
+internal static readonly TNumber Number0_0174;
+
+static TNumber FromString(string forFloat, string forInt)
+{
+var isFloating = typeof(TNumber) == typeof(float) || typeof(TNumber) == typeof(double) || typeof(TNumber) == typeof(System.Numerics.Complex);
+return isFloating
+? TNumber.Parse(forFloat, CultureInfo.InvariantCulture)
+: TNumber.Parse(forInt, null);
+}
+
+static Constants()
+{
+Number1000 = TNumber.Parse("1000", null);
+Number1609_34 = FromString("1609.34", "1609");
+Number60 = TNumber.Parse("60", null);
+Number3600 = TNumber.Parse("3600", null);
+Number0_0174 = FromString("0.0174", "0");
+Number0_1 = FromString("0.1", "0");
+Number0_01 = FromString("0.01", "0");
+Number0_001 = FromString("0.001", "0");
+Number0_000001 = FromString("0.000001", "0");
+}
+}
+public interface IBaseUnit<T, TNumber>
+{
+TNumber Base { get; }
+string Postfix { get; }
+}
+
+public static class Ops
+{
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+public static Unit<Div<T1, T2, T1Base, T2Base, TNumber>, Div<T1Base, T2Base, T1Base, T2Base, TNumber>, TNumber> 
+Divide<T1, T2, T1Base, T2Base, TNumber>(this Unit<T1, T1Base, TNumber> a, Unit<T2, T2Base, TNumber> b)
+where T1Base : struct, IBaseUnit<T1Base, TNumber>
+where T2Base : struct, IBaseUnit<T2Base, TNumber>
+where T1 : struct, IBaseUnit<T1Base, TNumber>
+where T2 : struct, IBaseUnit<T2Base, TNumber>
+where TNumber : IDivisionOperators<TNumber, TNumber, TNumber>,
+IMultiplyOperators<TNumber, TNumber, TNumber>
+=> new(a.Float / b.Float);
+
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+public static Unit<T1, TBase, TNumber> 
+Add<T1, T2, TBase, TNumber>(this Unit<T1, TBase, TNumber> a, Unit<T2, TBase, TNumber> b)
+where TBase : struct, IBaseUnit<TBase, TNumber>
+where T1 : struct, IBaseUnit<TBase, TNumber>
+where T2 : struct, IBaseUnit<TBase, TNumber>
+where TNumber : IDivisionOperators<TNumber, TNumber, TNumber>, 
+IAdditionOperators<TNumber, TNumber, TNumber>, 
+IMultiplyOperators<TNumber, TNumber, TNumber>
+=> 
+typeof(T1) == typeof(T2)
+? new(a.Float + b.Float)
+: new((a.Float * new T1().Base + b.Float * new T2().Base) / new T1().Base);
+
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+public static Unit<Squared<T, TBase, TNumber>, Squared<TBase, TBase, TNumber>, TNumber>
+Square<T, TBase, TNumber>(this Unit<T, TBase, TNumber> a)
+where TBase : struct, IBaseUnit<TBase, TNumber>
+where T : struct, IBaseUnit<TBase, TNumber>
+where TNumber : IMultiplyOperators<TNumber, TNumber, TNumber>,
+IDivisionOperators<TNumber, TNumber, TNumber>
+=> new(a.Float * a.Float);
+}
+
+public struct Squared<T, TBase, TNumber>
+: IBaseUnit<Squared<TBase, TBase, TNumber>, TNumber>
+where T : struct, IBaseUnit<TBase, TNumber>
+where TBase : struct, IBaseUnit<TBase, TNumber>
+where TNumber : IMultiplyOperators<TNumber, TNumber, TNumber>
+{
+public TNumber Base => new T().Base * new T().Base;
+
+public string Postfix => $"({new T().Postfix})^2";
+}
+
+public struct Div<T1, T2, T1Base, T2Base, TNumber>
+: IBaseUnit<Div<T1Base, T2Base, T1Base, T2Base, TNumber>, TNumber>
+where T1Base : struct, IBaseUnit<T1Base, TNumber>
+where T2Base : struct, IBaseUnit<T2Base, TNumber>
+where T1 : struct, IBaseUnit<T1Base, TNumber>
+where T2 : struct, IBaseUnit<T2Base, TNumber>
+where TNumber : IDivisionOperators<TNumber, TNumber, TNumber>
+{
+public TNumber Base => new T1().Base / new T2().Base;
+public string Postfix => $"({new T1().Postfix}/{new T2().Postfix})";
+}
+
+public struct Kilogram<TNumber> : IBaseUnit<Kilogram<TNumber>, TNumber>
+where TNumber : IMultiplicativeIdentity<TNumber, TNumber>
+{
+public string Postfix => "kg";
+
+public TNumber Base => TNumber.MultiplicativeIdentity;
+}
+
+public struct Tonn<TNumber> : IBaseUnit<Kilogram<TNumber>, TNumber>
+where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
+{
+public string Postfix => "t";
+
+public TNumber Base => Constants<TNumber>.Number1000;
+}
+
+public struct Gram<TNumber> : IBaseUnit<Kilogram<TNumber>, TNumber>
+where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
+{
+public string Postfix => "g";
+
+public TNumber Base => Constants<TNumber>.Number0_001;
+}
+
+public struct Milligram<TNumber> : IBaseUnit<Kilogram<TNumber>, TNumber>
+where TNumber : IMultiplicativeIdentity<TNumber, TNumber>, IParsable<TNumber>
+{
+public string Postfix => "mg";
+
+public TNumber Base => Constants<TNumber>.Number0_000001;
+}
+public readonly record struct Unit<T, TBase, TNumber>(TNumber Float)
+where TBase : struct, IBaseUnit<TBase, TNumber>
+where T : struct, IBaseUnit<TBase, TNumber>
+where TNumber : IMultiplyOperators<TNumber, TNumber, TNumber>, IDivisionOperators<TNumber, TNumber, TNumber>
+{
+public override string ToString() => $"{Float:0.00} {new T().Postfix}";
+
+public Unit<TNew, TBase, TNumber> To<TNew>()
+where TNew : struct, IBaseUnit<TBase, TNumber>
+=> new(Float * new T().Base / new TNew().Base);
+}
+
+public static class UoM
+{
+public static Unit<Meter<T>, Meter<T>, T> Meters<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Kilometer<T>, Meter<T>, T> Kilometers<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Decimeter<T>, Meter<T>, T> Decimeters<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Centimeter<T>, Meter<T>, T> Centimeters<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Millimeter<T>, Meter<T>, T> Millimeters<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Mile<T>, Meter<T>, T> Miles<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Second<T>, Second<T>, T> Seconds<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Millisecond<T>, Second<T>, T> Milliseconds<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Minute<T>, Second<T>, T> Minutes<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Hour<T>, Second<T>, T> Hours<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Degree<T>, Radian<T>, T> Degrees<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Radian<T>, Radian<T>, T> Radians<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Kilogram<T>, Kilogram<T>, T> Kilograms<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Gram<T>, Kilogram<T>, T> Grams<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Milligram<T>, Kilogram<T>, T> Milligrams<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+
+public static Unit<Tonn<T>, Kilogram<T>, T> Tonns<T>(this T a)
+where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+=> new(a);
+}
