@@ -1,4 +1,11 @@
-﻿internal static class Constants<TNumber>
+﻿This code was written when generic operators were not yet available in C#. It is now possible to write this code much more elegantly, but I have not yet had the time to update it. 
+site: https://www.thomasclaudiushuber.com/2023/01/24/csharp-11-generic-math/
+in the first step i want you to summarize what the code hopes to achive.
+Then you should write the idea in code based on my code.
+You should design the classes so that this system is extensible.
+
+ConstantHolder.cs:
+internal static class Constants<TNumber>
 where TNumber : IParsable<TNumber>
 {
 internal static readonly TNumber Number1000;
@@ -32,12 +39,8 @@ Number0_001 = FromString("0.001", "0");
 Number0_000001 = FromString("0.000001", "0");
 }
 }
-public interface IBaseUnit<T, TNumber>
-{
-TNumber Base { get; }
-string Postfix { get; }
-}
 
+Operations.cs:
 public static class Ops
 {
 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -97,7 +100,28 @@ where TNumber : IDivisionOperators<TNumber, TNumber, TNumber>
 public TNumber Base => new T1().Base / new T2().Base;
 public string Postfix => $"({new T1().Postfix}/{new T2().Postfix})";
 }
+IBaseUnit{T}.cs:
+/// Represents a base unit of measurement with a specific type of quantity.
+public interface IBaseUnit<T, TNumber> {
+    /// Gets the base value of the quantity.
+    TNumber Base { get; }
+    /// Gets the postfix used to represent the unit of measurement.
+    string Postfix { get; }
+}
+Unit.cs:
+/// Represents a unit of measurement with a floating-point value.
+public readonly record struct Unit<T, TBase, TNumber>(TNumber Float)
+    where TBase : struct, IBaseUnit<TBase, TNumber>
+    where T : struct, IBaseUnit<TBase, TNumber>
+    where TNumber : IMultiplyOperators<TNumber, TNumber, TNumber>, IDivisionOperators<TNumber, TNumber, TNumber>
+{
+    public override string ToString() => $"{Float:0.00} {new T().Postfix}";
+    public Unit<TNew, TBase, TNumber> To<TNew>()
+        where TNew : struct, IBaseUnit<TBase, TNumber>
+        => new(Float * new T().Base / new TNew().Base);
+}
 
+PredefinedUnits.Mass.cs:
 public struct Kilogram<TNumber> : IBaseUnit<Kilogram<TNumber>, TNumber>
 where TNumber : IMultiplicativeIdentity<TNumber, TNumber>
 {
@@ -129,81 +153,46 @@ public string Postfix => "mg";
 
 public TNumber Base => Constants<TNumber>.Number0_000001;
 }
-public readonly record struct Unit<T, TBase, TNumber>(TNumber Float)
-where TBase : struct, IBaseUnit<TBase, TNumber>
-where T : struct, IBaseUnit<TBase, TNumber>
-where TNumber : IMultiplyOperators<TNumber, TNumber, TNumber>, IDivisionOperators<TNumber, TNumber, TNumber>
-{
-public override string ToString() => $"{Float:0.00} {new T().Postfix}";
 
-public Unit<TNew, TBase, TNumber> To<TNew>()
-where TNew : struct, IBaseUnit<TBase, TNumber>
-=> new(Float * new T().Base / new TNew().Base);
+
+PredefinedUnits.Arithmetics.cs:
+public struct Div<T1, T2, T1Base, T2Base, TNumber>
+    : IBaseUnit<Div<T1Base, T2Base, T1Base, T2Base, TNumber>, TNumber>
+    where T1Base : struct, IBaseUnit<T1Base, TNumber>
+    where T2Base : struct, IBaseUnit<T2Base, TNumber>
+    where T1 : struct, IBaseUnit<T1Base, TNumber>
+    where T2 : struct, IBaseUnit<T2Base, TNumber>
+    where TNumber : IDivisionOperators<TNumber, TNumber, TNumber> {
+    public TNumber Base => new T1().Base / new T2().Base;
+    public string Postfix => $"({new T1().Postfix} / {new T2().Postfix})";
 }
 
+public struct Multi<T1, T2, T1Base, T2Base, TNumber>
+    : IBaseUnit<Multi<T1Base, T2Base, T1Base, T2Base, TNumber>, TNumber>
+    where T1Base : struct, IBaseUnit<T1Base, TNumber>
+    where T2Base : struct, IBaseUnit<T2Base, TNumber>
+    where T1 : struct, IBaseUnit<T1Base, TNumber>
+    where T2 : struct, IBaseUnit<T2Base, TNumber>
+    where TNumber : IMultiplyOperators<TNumber, TNumber, TNumber> {
+    public TNumber Base => new T1().Base * new T2().Base;
+    public string Postfix => $"({new T1().Postfix} * {new T2().Postfix})";
+}
+UoM.cs:
 public static class UoM
 {
-public static Unit<Meter<T>, Meter<T>, T> Meters<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
+    public static Unit<Kilogram<T>, Kilogram<T>, T> Kilograms<T>(this T a)
+        where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+        => new(a);
 
-public static Unit<Kilometer<T>, Meter<T>, T> Kilometers<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
+    public static Unit<Gram<T>, Kilogram<T>, T> Grams<T>(this T a)
+        where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+        => new(a);
 
-public static Unit<Decimeter<T>, Meter<T>, T> Decimeters<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
+    public static Unit<Milligram<T>, Kilogram<T>, T> Milligrams<T>(this T a)
+        where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+        => new(a);
 
-public static Unit<Centimeter<T>, Meter<T>, T> Centimeters<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Millimeter<T>, Meter<T>, T> Millimeters<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Mile<T>, Meter<T>, T> Miles<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Second<T>, Second<T>, T> Seconds<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Millisecond<T>, Second<T>, T> Milliseconds<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Minute<T>, Second<T>, T> Minutes<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Hour<T>, Second<T>, T> Hours<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Degree<T>, Radian<T>, T> Degrees<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Radian<T>, Radian<T>, T> Radians<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Kilogram<T>, Kilogram<T>, T> Kilograms<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Gram<T>, Kilogram<T>, T> Grams<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Milligram<T>, Kilogram<T>, T> Milligrams<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
-
-public static Unit<Tonn<T>, Kilogram<T>, T> Tonns<T>(this T a)
-where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
-=> new(a);
+    public static Unit<Tonn<T>, Kilogram<T>, T> Tonns<T>(this T a)
+        where T : IMultiplicativeIdentity<T, T>, IParsable<T>, IDivisionOperators<T, T, T>, IMultiplyOperators<T, T, T>
+        => new(a);
 }
